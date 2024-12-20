@@ -1,0 +1,12 @@
+__pycache__/
+images/
+test.py 
+app.log
+.env
+aso_experiments_wildlife.json
+test_sheets.py
+.DS_Store
+config.py
+*.png
+*pem
+*key

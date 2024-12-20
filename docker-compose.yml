@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    volumes:
+      - .:/app
+      - ./logs:/tmp/logs
+      - ./certs:/app/certs
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - EMAIL=${EMAIL}
+      - PASSWORD=${PASSWORD}
+      - OTP_CODE=${OTP_CODE}
+      - SECRET_KEY=${SECRET_KEY}
+      - FIELD_ENCRYPTION_KEY=${FIELD_ENCRYPTION_KEY}
+      - SENTRY_DSN=${SENTRY_DSN}
+    command: python fetch_csls.py
+    restart: unless-stopped
