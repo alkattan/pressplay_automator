@@ -14,5 +14,5 @@ typer
 sqlalchemy
 pymysql==1.1.1
 tenacity
-dependency-injector==4.43.0
+dependency-injector
 mysql-connector-python==8.0.33
