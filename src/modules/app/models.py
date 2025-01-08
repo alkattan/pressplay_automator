@@ -29,6 +29,7 @@ class AppModel(Base):
     sync_csls_now: Mapped[bool] = mapped_column(Boolean, default=False)
     last_sync: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     next_sync: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    slack_hook_url: Mapped[str] = mapped_column(String(255), nullable=True)
     publisher = relationship("PublisherModel", back_populates="apps")
     csls: Mapped[List["CSLModel"]] = relationship(back_populates="app", cascade="all, delete-orphan")
     experiments: Mapped[List["ExperimentModel"]] = relationship(back_populates="app", cascade="all, delete-orphan")

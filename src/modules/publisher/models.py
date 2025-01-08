@@ -18,7 +18,6 @@ class PublisherModel(Base):
     status: Mapped[PublisherStatus] = mapped_column(SQLEnum(PublisherStatus))
     play_console_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
     dataset: Mapped[str] = mapped_column(String(255))
-    slack_hook_url: Mapped[str] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
