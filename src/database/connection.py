@@ -61,13 +61,7 @@ class Database:
             pool_pre_ping=True,  # Enable connection health checks
             pool_recycle=3600,   # Recycle connections after 1 hour
             pool_size=5,         # Maximum number of connections
-            max_overflow=10,      # Allow up to 10 connections over pool_size
-            # Add these parameters for better MySQL compatibility
-            connect_args={
-                "connect_timeout": 60,
-                "use_pure": True,
-                "port": int(MYSQL['PORT'])
-            }
+            max_overflow=10      # Allow up to 10 connections over pool_size
         )
         
         # Create thread-safe session factory
@@ -80,41 +74,18 @@ class Database:
         )
 
     @contextmanager
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        reraise=True
-    )
-    def session(self) -> Callable[..., AbstractContextManager[Session]]:
+    def session(self):
         """
         Provide a transactional scope around a series of operations.
         
-        This context manager ensures that:
-        1. A new session is created
-        2. Operations are executed within a transaction
-        3. The session is properly closed
-        4. Automatic rollback occurs on exceptions
-        
         Yields:
             Session: SQLAlchemy session object
-            
-        Raises:
-            Exception: Re-raises any exceptions that occur within the context
-            
-        Usage:
-            with database.session() as session:
-                user = session.query(User).first()
-                # Session automatically closes after context
         """
-        session: Session = self._session_factory()
+        session = self._session_factory()
         try:
             yield session
-        except exc.OperationalError as e:
-            logger.warning(f"Database operational error: {e}")
-            session.rollback()
-            raise
+            session.commit()
         except Exception:
-            logger.exception("Session rollback because of exception")
             session.rollback()
             raise
         finally:
