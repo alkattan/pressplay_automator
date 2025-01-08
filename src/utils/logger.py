@@ -43,7 +43,7 @@ def get_logger(app_package):
         logger.addHandler(ch)
 
         # Create a file handler object
-        handler = logging.FileHandler(f"/tmp/app_{app_package}_{date}.log")
+        handler = logging.FileHandler(f"/tmp/pressplay_{app_package}_{date}.log")
         # Create a formatter
         formatter = logging.Formatter(
             "%(levelname)s|%(pathname)s|%(lineno)s|%(name)s|%(asctime)s| %(message)s"
@@ -59,5 +59,5 @@ def get_logger(app_package):
 
 
 # shared config for logger across all modules
-logger_app_package = "ab_testing_automation"
+logger_app_package = "pressplay"
 logger = get_logger(logger_app_package)
