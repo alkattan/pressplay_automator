@@ -298,7 +298,7 @@ def process_running_experiments(running : List[Dict], app : AppModel, gpc : Play
 def _send_slack_notifications(app, win_messages, stopped_messages, applied_messages):
     """Send notifications to Slack channels"""
     phiture_hook = SLACK_HOOKS['PHITURE_HOOK']
-    slack_hook = app.publisher.slack_hook_url or ""
+    slack_hook = app.slack_hook_url or ""
     
     # win notifications
     win_message = "\n".join(win_messages)
