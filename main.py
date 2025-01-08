@@ -164,7 +164,7 @@ def automate_experiments_for_app(session, app: AppModel, gpc: PlayConsoleDriver,
         session,
         SLACK_HOOKS['PHITURE_BUGS'],
         SLACK_HOOKS['PHITURE_HOOK'],
-        app.publisher.slack_hook_url,
+        app.slack_hook_url,
     )
 
     # 7- Accept any pending changes
