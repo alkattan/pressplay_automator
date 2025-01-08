@@ -251,7 +251,7 @@ def process_running_experiments(running : List[Dict], app : AppModel, gpc : Play
             # stop if experiment is losing
             stop, stopped_message = stop_losing_experiment(
                 running_experiment, 
-                experiment.settings, 
+                experiment, 
                 gpc, 
                 session
             )
@@ -385,16 +385,17 @@ def _send_slack_notifications(app, win_messages, stopped_messages, applied_messa
             )
 
 
-def stop_losing_experiment(r, experiment_settings, gpc, session):
+def stop_losing_experiment(r, experiment, gpc, session):
     """
     Stop experiment if it meets the stopping criteria
     
     Args:
         r (dict): Experiment data from Play Console
-        experiment_settings (ExperimentSettingsModel): Experiment settings from database
+        experiment (ExperimentModel): Experiment from database
         gpc (PlayConsoleDriver): Play Console driver instance
         session (Session): Database session
     """
+    experiment_settings = experiment.settings
     stop_decision = False
     messages = []
     experiment_name = r["experiment_name"]
@@ -595,8 +596,8 @@ Killed due to: Early kill rules
 {advanced_kill_message}
 """
                 )
-
-    elif r["status"] == "Current listing won":
+    # stop experiment if loss of stopp
+    elif r["status"] == "Current listing won" or experiment.status == ExperimentStatus.STOPPING:
         utils.logger.info(
             f"\nStop experiment {experiment_name} result={r['status']} running_for={running_for_days} days max={experiment_settings.max_duration_days}\n{r}"
         )
