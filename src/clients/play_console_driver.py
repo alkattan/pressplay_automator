@@ -4,17 +4,20 @@ import random
 import time
 import pyotp
 from datetime import datetime
-
-# from utils.download import download_file_from_google_drive
 from src.utils.utils import resize_image, download_image, resize_image_if_needed
 import traceback
 import socket
 from urllib.error import HTTPError
 from src.modules.publisher.models import PublisherModel
 from src.modules.app.models import AppModel
+from src.modules.publishing_overview.repository import create_publishing_change
+from sqlalchemy.orm import Session
 # Logger
 import src.utils.utils as utils
 import re
+from typing import List
+from src.modules.experiment.repository import get_experiment_attributes, get_experiment_variants
+from src.modules.experiment.models import ExperimentModel, VariantModel
 
 print('working_dir', os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -40,7 +43,7 @@ class PlayConsoleDriver:
     completed_table_xpath = '//console-section[@htmltitle="Completed"]'
     past_table_xpath = '//console-section[@htmltitle="Past experiments"]'
 
-    def __init__(self, publisher: PublisherModel, app: AppModel, email: str, password: str, otp_code: str):
+    def __init__(self, publisher: PublisherModel, app: AppModel, email: str, password: str, otp_code: str, session: Session):
         self.publisher = publisher
         self.app = app
         self.play_console_publisher = publisher.play_console_id
@@ -52,6 +55,7 @@ class PlayConsoleDriver:
         self.otp_code = otp_code
         self.email = email
         self.password = password
+        self.session = session
         self.logger = utils.logger
         self.playwright = sync_playwright().start()
         self.browser = self.start_browser()
@@ -79,12 +83,16 @@ class PlayConsoleDriver:
             self.logger.error("No OTP code found")
             return
 
+    def __del__(self):
+        if hasattr(self, 'session'):
+            self.session.close()
+
     def clean(self):
         if self.browser is not None:
             self.browser.close_browser()
             self.logger.error("Browser closed")
 
-    def set_app(self, publisher: PublisherModel, app: AppModel):
+    def set_publisher_app(self, publisher: PublisherModel, app: AppModel):
         self.publisher = publisher
         self.app = app
         self.play_console_publisher = publisher.play_console_id
@@ -170,7 +178,12 @@ class PlayConsoleDriver:
     def create_icon_experiment(self):
         pass
 
-    def create_experiment(self, experiment: dict, variants: list, publisher_id, app_id):
+    def create_experiment(self, experiment: ExperimentModel, variants: List[VariantModel], publisher_id, app_id):
+        """Create experiment in Play Console"""
+        # Get experiment attributes in dictionary format
+        experiment_data = get_experiment_attributes(self.session, experiment)
+        variant_data = get_experiment_variants(experiment)
+        
         # Check where is the folder based on env
         if socket.gethostname().startswith("scraper"):
             self.logger.info("Running on scraper")
@@ -190,7 +203,7 @@ class PlayConsoleDriver:
             # fill in experiment name
             self.page.fill(
                 "xpath=//console-form-row/div/div/div/material-input/label/input",
-                experiment["experiment_name_auto_populated"],
+                experiment_data["experiment_name_auto_populated"],
             )
 
             # fill in experiment store listing
@@ -203,20 +216,20 @@ class PlayConsoleDriver:
                 # Fun games
                 self.page.click(
                     'xpath=//dynamic-component/listing-option/div[contains(text(),"'
-                    + experiment["store_listing_auto_populated"]
+                    + experiment_data["csl_name"]  # Updated from store_listing_auto_populated
                     + '")]'
                 )
             except Exception:
                 # Wildlife
                 self.page.click(
                     'xpath=//simple-html/span[contains(text(),"'
-                    + experiment["store_listing_auto_populated"]
+                    + experiment_data["csl_name"]  # Updated from store_listing_auto_populated
                     + '")]'
                 )
 
             # short description experiments
             # Click on Localised experiment
-            if experiment["experiment_type_auto_populated"] != "Default Graphics":
+            if experiment_data["locale_name"] != "Default Graphics":  # Updated from experiment_type_auto_populated
                 self.page.click("text=Localized experiment")
                 time.sleep(2)
                 # Click on select locales 1st drop down
@@ -229,7 +242,7 @@ class PlayConsoleDriver:
                 # Search for Locale
                 self.page.fill(
                     "xpath=//material-select-searchbox/material-input/div/div/label/input",
-                    experiment["experiment_type_auto_populated"],
+                    experiment_data["locale_name"]  # Updated from experiment_type_auto_populated
                 )  # en-US
 
                 # click on the selected locale
@@ -237,7 +250,7 @@ class PlayConsoleDriver:
                     "xpath=//material-select-dropdown-item/dynamic-component/language-option/div"
                 )
             # icon experiments
-            elif experiment["experiment_type_auto_populated"] == "Default Graphics":
+            elif experiment_data["locale_name"] == "Default Graphics":  # Updated from experiment_type_auto_populated
                 self.page.click("text=Default graphics experiment")
                 time.sleep(2)
 
@@ -251,7 +264,7 @@ class PlayConsoleDriver:
             ## Second Page
             # now selecting the default of A/B test
             self.page.click(
-                'xpath=//label[contains(text(), "' + experiment["target_metric"] + '")]'
+                'xpath=//label[contains(text(), "' + experiment_data["target_metric"] + '")]'
             )
 
             # Click on Variants
@@ -273,19 +286,22 @@ class PlayConsoleDriver:
             # # Minimum detectable effect
             #     self.page.locator('text=2.5%').nth(1).click()
 
-            if experiment["minimum_detectable_effect"] != "2.5%":
+            if experiment_data["minimum_detectable_effect"] != "2.5%":
                 self.page.locator('xpath=//material-dropdown-select/dropdown-button/div/span[contains(text(),"2.5%")]').click()
                 time.sleep(1)
-                mdf=experiment['minimum_detectable_effect']
+                mdf=experiment_data['minimum_detectable_effect']
                 self.page.locator(
                     f'xpath=//material-select-dropdown-item/dynamic-component/description-option/div/div[contains(text(), "{mdf}")]'
                 ).click()
 
             # # Confidence Interval
-            if experiment["confidence_interval"] != "90%":
-                self.page.locator('xpath=//span[contains(text(),"90%")]').click()
+            if experiment_data["confidence_interval"] != "90%":
+                self.page.locator('xpath=//material-dropdown-select/dropdown-button/div/span[contains(text(),"90%")]').click()
                 time.sleep(1)
-                self.page.locator(f'text={experiment["confidence_interval"]}').click()
+                # Click on the desired confidence interval using a more specific selector
+                self.page.locator(
+                    f'xpath=//material-select-dropdown-item/dynamic-component/description-option/div/div[contains(text(), "{experiment_data["confidence_interval"]}")]'
+                ).click()
 
             # Click on Next button second page
             self.page.click(
@@ -294,73 +310,70 @@ class PlayConsoleDriver:
 
             ## Third Page
             # Click on the experiment type
-            if len(variants[0]["icon"]) > 0:
+            if len(variants[0].icon or "") > 0:
                 self.page.locator(f"text=App icon").click()
 
-            if len(variants[0]["short_description"]) > 0:
+            if len(variants[0].short_description or "") > 0:
                 self.page.locator(f"text=Short description").click()
 
-            if len(variants[0]["feature_graphic"]) > 0:
+            if len(variants[0].feature_graphic or "") > 0:
                 self.page.locator(f"text=Feature graphic").click()
 
-            if len(variants[0]["screen1"]) > 0:
+            if len(variants[0].screen1 or "") > 0:
                 self.page.locator(f"text=Screenshots").click()
 
-            if len(variants[0]["promo_video"]) > 0:
+            if len(variants[0].promo_video or "") > 0:
                 self.page.locator('xpath=//material-checkbox/div/label[contains(text(), "Video")]').click()
 
             time.sleep(1)
-            # Loop over varinats and create them
+            # Loop over variants and create them
             for i_v, variant in enumerate(variants):
                 edit_variant_name = f"text=Edit Variant {i_v+1}"
                 self.page.locator(edit_variant_name).click()
-                # self.page.locator("xpath=//").click()
                 self.logger.info(f"Creating variant {i_v+1}")
 
                 # Generate a timestamp to append to image filenames
                 timestamp = int(time.time())
 
-                if len(variant["short_description"]) > 0:
+                if len(variant.short_description or "") > 0:
                     self.page.fill(
                         'xpath=//input[@aria-label="Variant name"]',
-                        f"{variant['variant_name']}",
+                        f"{variant.name}",
                     )
                     self.page.fill(
                         'xpath=//input[@aria-label="Short description of the app"]',
-                        f"{variant['short_description']}",
+                        f"{variant.short_description}",
                     )
-                if len(variant["icon"]) > 0:
+                if len(variant.icon or "") > 0:
                     self.page.fill(
                         'xpath=//material-input[@debug-id="name-input"]/label/input',
-                        f"{variant['variant_name']}",
+                        f"{variant.name}",
                     )
-                    image = f"{path_images}/{self._sanitize_filename(variant['variant_name'])}_{timestamp}.png"
-                    download_image(variant["icon"], image)
+                    image = f"{path_images}/{self._sanitize_filename(variant.name)}_{timestamp}.png"
+                    download_image(variant.icon, image)
                     resize_image(image, (512, 512))
-                    # self.page.set_input_files('input[type="file"]', )
                     self.page.set_input_files(
                         'xpath=//app-image-uploader[@debug-id="icon-uploader"]/console-graphic-uploader/input[@type="file"]',
                         image,
                     )
                     time.sleep(1)
-                if len(variant["feature_graphic"]) > 0:
+                if len(variant.feature_graphic or "") > 0:
                     self.page.fill(
                         'xpath=//material-input[@debug-id="name-input"]/label/input',
-                        f"{variant['variant_name']}",
+                        f"{variant.name}",
                     )
-                    image = f"{path_images}/{self._sanitize_filename(variant['variant_name'])}_{timestamp}.png"
-                    download_image(variant["feature_graphic"], image)
+                    image = f"{path_images}/{self._sanitize_filename(variant.name)}_{timestamp}.png"
+                    download_image(variant.feature_graphic, image)
                     resize_image(image, (1024, 500))
-                    # self.page.set_input_files('input[type="file"]', image)
                     self.page.set_input_files(
                         'xpath=//app-image-uploader[@debug-id="feature-graphic-uploader"]/console-graphic-uploader/input[@type="file"]',
                         image,
                     )
                     time.sleep(5)
-                if len(variant["screen1"]) > 0:
+                if len(variant.screen1 or "") > 0:
                     self.page.fill(
                         'xpath=//material-input[@debug-id="name-input"]/label/input',
-                        f"{variant['variant_name']}",
+                        f"{variant.name}",
                     )
                     screens = []
                     screens_7 = []
@@ -368,21 +381,21 @@ class PlayConsoleDriver:
                     for i in range(1, 9):
                         if len(variant[f"screen{i}"]) == 0:
                             break
-                        image = f"{path_images}/{self._sanitize_filename(variant['variant_name'])}_{timestamp}_{i}.png"
+                        image = f"{path_images}/{self._sanitize_filename(variant.name)}_{timestamp}_{i}.png"
                         download_image(variant[f"screen{i}"], image)
                         resize_image_if_needed(image, True)
                         screens.append(image)
                     for i in range(1, 9):
                         if len(variant[f"screen{i}_7inch"]) == 0:
                             break
-                        image = f"{path_images}/{self._sanitize_filename(variant['variant_name'])}_{timestamp}_7inch_{i}.png"
+                        image = f"{path_images}/{self._sanitize_filename(variant.name)}_{timestamp}_7inch_{i}.png"
                         download_image(variant[f"screen{i}_7inch"], image)
                         resize_image_if_needed(image, True)
                         screens_7.append(image)
                     for i in range(1, 9):
                         if len(variant[f"screen{i}_10inch"]) == 0:
                             break
-                        image = f"{path_images}/{self._sanitize_filename(variant['variant_name'])}_{timestamp}_10inch_{i}.png"
+                        image = f"{path_images}/{self._sanitize_filename(variant.name)}_{timestamp}_10inch_{i}.png"
                         download_image(variant[f"screen{i}_10inch"], image)
                         resize_image_if_needed(image, True)
                         screens_10.append(image)
@@ -400,14 +413,14 @@ class PlayConsoleDriver:
                         screens_10,
                     )
                     time.sleep(30)
-                if len(variant["promo_video"]) > 0:
+                if len(variant.promo_video or "") > 0:
                     self.page.fill(
                         'xpath=//material-input[@debug-id="name-input"]/label/input',
-                        f"{variant['variant_name']}",
+                        f"{variant.name}",
                     )
                     self.page.fill(
                         'xpath=//material-input[@debug-id="promo-video-input"]/label/input',
-                        f"{variant['promo_video']}",
+                        f"{variant.promo_video}",
                     )
                     time.sleep(5)
                 self.page.click("text=Apply")
@@ -425,7 +438,6 @@ class PlayConsoleDriver:
         # HTTP Excpetion
         except HTTPError as err:
             return False, str(err)
-
 
         except Exception as se:
             error_message = str(se)
@@ -453,22 +465,24 @@ class PlayConsoleDriver:
             return False
 
     def accept_publishing_changes(self):
+        """Accept any pending publishing changes"""
         self.logger.info("Checking review_and_publishing_changes")
         publish = True
         review = True
         changes = []
-        publish_sheet = self.sheets.get_data_as_dict("Publish")
+        
         self.page.goto(self.publishing_overview)
         # Changes ready to publish
         time.sleep(2)
+        
         # check if changes table exists
         if (self.page.locator(
                 "xpath=//console-table[@debug-id='changes-table']/div/div/ess-table/ess-particle-table/div/div/div/div"
-            ).count()
-            > 0):
+            ).count() > 0):
             changes_tag = self.page.locator(
                 "xpath=//console-table[@debug-id='changes-table']/div/div/ess-table/ess-particle-table/div/div/div/div"
             ).all()
+            
             for row_change in changes_tag:
                 entry = ""
                 try:
@@ -492,8 +506,7 @@ class PlayConsoleDriver:
                 if (
                     self.page.locator(
                         f'xpath=//span[contains(text(), "{breaking_change}")  and @role="gridcell"]'
-                    ).count()
-                    > 0
+                    ).count() > 0
                 ):
                     # Log the breaking change and quit
                     self.logger.info(
@@ -501,13 +514,13 @@ class PlayConsoleDriver:
                     )
                     publish = False
                     review = False
+                    
             # if automated publishing is on
             if self.automated_publishing == "on":
                 self.logger.info("Automated Publishing")
                 if publish:
                     self.logger.info("Changes being sent to publish")
                     try:
-
                         # log
                         self.logger.info("Sending changes to publish")
                         self.page.click(
@@ -531,47 +544,46 @@ class PlayConsoleDriver:
                     except Exception as ee:
                         self.logger.info("Nothing to Publish")
 
-        # if automated send for review is on
-        if self.automated_send_for_review == "on":
-            # Changes ready for review
-            if review:
-                self.logger.info("Changes being sent for review")
-                try:
-                    # send changes for review button with numbers
+            # if automated send for review is on
+            if self.automated_send_for_review == "on":
+                # Changes ready for review
+                if review:
+                    self.logger.info("Changes being sent for review")
                     try:
-                        # log
-                        self.logger.info("Sending changes for review")
-                        self.page.click(
-                            'xpath=//publishing-changes-section[@debug-id="not-sent-for-review-changes"]/console-section/div/console-header/div/div/div/div/div/console-button-set/div/div/button[@debug-id="send-for-review-button"]'
-                        )
-                    except Exception:
-                        pass
-                    time.sleep(2)
+                        # send changes for review button with numbers
+                        try:
+                            # log
+                            self.logger.info("Sending changes for review")
+                            self.page.click(
+                                'xpath=//publishing-changes-section[@debug-id="not-sent-for-review-changes"]/console-section/div/console-header/div/div/div/div/div/console-button-set/div/div/button[@debug-id="send-for-review-button"]'
+                            )
+                        except Exception:
+                            pass
+                        time.sleep(2)
+                        try:
+                            # Send changes for review dialog button
+                            # log
+                            self.logger.info("clicking ok button")
+                            self.page.click(
+                                "xpath=//footer/div/div/console-button-set/div/button[@debug-id='yes-button']"
+                            )
+                        except Exception:
+                            pass
+                    except Exception as e:
+                        self.logger.info(f"Nothing to send for review {str(e)}")
+                        
+                # add changes to the database if they exist
+                if len(changes) > 0:
                     try:
-                        # Send changes for review dialog button
-                        # lgo
-                        self.logger.info("clicking ok button")
-                        self.page.click(
-                            "xpath=//footer/div/div/console-button-set/div/button[@debug-id='yes-button']"
+                        create_publishing_change(
+                            self.session,
+                            self.app.id,
+                            "\n".join(changes),
+                            publish,
+                            review
                         )
-                    except Exception:
-                        pass
-                    # Click on Add changes
-                    # self.page.click("text=Add changes")
-                except Exception as e:
-                    self.logger.info(f"Nothing to send for review {str(e)}")
-        # add changes to the sheet if they exist
-        if len(changes) > 0:
-            publish_sheet.append(
-                {
-                    "app_package": self.app_package,
-                    "changes": "\n".join(changes),
-                    "publish_decision": publish,
-                    "review_decision": review,
-                    "date": datetime.now().isoformat().split(".")[0],
-                }
-            )
-            self.sheets.reflect_changes_to_sheet(publish_sheet, "Publish")
+                    except Exception as e:
+                        self.logger.error(f"Error saving publishing changes to database: {e}")
 
     def process_variant(self, variant_stat: Locator, variant_data: Locator) -> dict:
         """

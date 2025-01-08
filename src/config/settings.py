@@ -80,3 +80,9 @@ RETRY = {
     'MAX_ATTEMPTS': 3,
     'DELAY_SECONDS': 80
 } 
+
+# Slack Hooks
+SLACK_HOOKS = {
+    'PHITURE_BUGS': os.getenv('BUGS_SLACK_HOOK_URL'),
+    'PHITURE_HOOK': os.getenv('NOTIFICATION_SLACK_HOOK_URL')
+}

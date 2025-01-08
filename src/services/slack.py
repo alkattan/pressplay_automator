@@ -1,6 +1,6 @@
 import requests
 import json
-import utils.utils as utils
+import src.utils.utils as utils
 
 # This function will send a message to a slack channel
 def send_message_to_slack_channel(

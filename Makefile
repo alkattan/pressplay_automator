@@ -1,13 +1,13 @@
 # Variables
 SERVER_IP := 172.16.15.41
-DEPLOY_PATH := /aso_automation/
+DEPLOY_PATH := /pressplay_automator/
 PYTHON := python3
 PIP := pip3
 VENV := venv
 VENV_BIN := $(VENV)/bin
 
 # Exclude patterns for deployment
-EXCLUDE_PATTERNS := venv/ .git/ __pycache__/ .pytest_cache/ logs/ .vscode/ *.pyc
+EXCLUDE_PATTERNS := .venv/ .git/ __pycache__/ .pytest_cache/ logs/ .vscode/ *.pyc
 
 .PHONY: help venv install deploy clean lint test run
 

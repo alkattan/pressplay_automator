@@ -9,7 +9,7 @@ from src.modules.publisher.repository import get_publishers_with_apps
 from src.modules.csl.models import CSLModel, LocaleModel
 from src.modules.app.models import AppModel
 from sqlalchemy import select
-from src.modules.csl.service import add_csls
+from src.modules.csl.repository import add_csls
 from src.database.connection import get_db_session
 from datetime import datetime, timezone, timedelta
 from src.modules.app.schemas import AppStatus
@@ -19,15 +19,40 @@ gpc = None
 
  
 
-def main(client_id=None, manuall=None):
+def main(client_id=None, manual=False):
+    """
+    Main function to fetch CSLs from Play Console
+    
+    Args:
+        client_id: Optional client ID to process specific publisher
+        manual: If True, only process apps with sync_now=True
+    """
     global gpc
     publishers = get_publishers_with_apps()
+    
     for publisher in publishers:
-        fetch_csls(publisher)
+        if client_id is not None and publisher.id != client_id:
+            continue
+            
+        # Filter apps based on manual flag
+        apps_to_process = []
+        for app in publisher.apps:
+            if manual:
+                # In manual mode, only process apps with sync_now=True
+                if app.sync_now:
+                    apps_to_process.append(app)
+            else:
+                # In automatic mode, process all apps
+                apps_to_process.append(app)
+        
+        # Update publisher's apps to only process the filtered ones
+        publisher.apps = apps_to_process
+        
+        if apps_to_process:
+            fetch_csls(publisher)
+            
     if gpc is not None:
         gpc.clean()
-        
-
 
 def fetch_csls(publisher):
     """
@@ -66,7 +91,8 @@ def _ensure_gpc_initialized(gpc, publisher, app):
             app,
             email=os.getenv("email"),
             password=os.getenv("password"),
-            otp_code=os.getenv("otp_code")
+            otp_code=os.getenv("otp_code"),
+            session=None
         )
     return gpc
 
@@ -76,7 +102,7 @@ def _fetch_app_csls(gpc, publisher, app):
     utils.logger = utils.get_logger(utils.logger_app_package)
     utils.logger.info(f"Getting CSLS for {app.package_id}")
     
-    gpc.set_app(publisher, app)
+    gpc.set_publisher_app(publisher, app)
     csls = gpc.get_store_csls()
     
     if len(csls) == 0:
@@ -126,16 +152,20 @@ def _update_app_sync_status(session, publisher):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch CSLs from Play Console")
 
-    # Specify the type as int, but also allow None as a default value
-
     parser.add_argument(
-        "--client_id", type=int, default=None, help="an integer for the client ID"
+        "--client_id", 
+        type=int, 
+        default=None, 
+        help="an integer for the client ID"
     )
 
     parser.add_argument(
-        "--manuall", type=str, default=None, help="manuall Run based on admin panel"
+        "--manual", 
+        type=bool, 
+        default=False, 
+        help="If True, only process apps with sync_now=True"
     )
 
-    # Parse the command-line arguments
-    args = parser.parse_args()
-    main(client_id=args.client_id, manuall=args.manuall)
+    args = parser.parse_args() 
+    
+    main(client_id=args.client_id, manual=args.manual)

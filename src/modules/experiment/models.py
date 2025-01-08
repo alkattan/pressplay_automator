@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.database.connection import Base
-from sqlalchemy import String, Integer, Enum, ForeignKey, Float, Text
+from sqlalchemy import String, Integer, Enum, ForeignKey, Float, Text, BigInteger
 from src.modules.experiment.schemas import ApplySetting, ApplyOnPercentile, MinimumDetectableEffectEnum, ConfidenceIntervalEnum, TargetMetric
 from src.modules.experiment.schemas import ExperimentStatus, ExperimentType, AssetType
 
@@ -48,7 +48,7 @@ class ExperimentModel(Base):
     
     asset_type: Mapped[AssetType] = mapped_column(Enum(AssetType))
     experiment_type: Mapped[ExperimentType] = mapped_column(Enum(ExperimentType))
-    google_play_experiment_id: Mapped[str] = mapped_column(Integer, nullable=True)
+    google_play_experiment_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
     experiment_name_auto_populated: Mapped[str] = mapped_column(String(255))
     
     
