@@ -881,6 +881,7 @@ class PlayConsoleDriver:
                             variants.append(variant)
 
                     exp= {
+                            "app_id": self.app.id,
                             "experiment_name": experiment_name,
                             "experiment_id": experiment_id,
                             "locale": locale,
