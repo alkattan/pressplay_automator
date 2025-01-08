@@ -26,6 +26,7 @@ class AppModel(Base):
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     sync_now: Mapped[bool] = mapped_column(Boolean, default=False)
+    sync_csls_now: Mapped[bool] = mapped_column(Boolean, default=False)
     last_sync: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     next_sync: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     publisher = relationship("PublisherModel", back_populates="apps")

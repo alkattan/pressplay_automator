@@ -39,7 +39,7 @@ def main(client_id=None, manual=False):
         for app in publisher.apps:
             if manual:
                 # In manual mode, only process apps with sync_now=True
-                if app.sync_now:
+                if app.sync_csls_now:
                     apps_to_process.append(app)
             else:
                 # In automatic mode, process all apps
@@ -142,7 +142,7 @@ def _update_app_sync_status(session, publisher):
     """Update sync status for all publisher apps"""
     now = datetime.now(timezone.utc)
     for app in publisher.apps:
-        app.sync_now = False
+        app.sync_csls_now = False
         app.last_sync = now
         app.next_sync = now + timedelta(hours=12)
 

@@ -61,7 +61,7 @@ def update_app_sync_status(app: AppModel, session: Session) -> None:
     """
     try:
         app.last_sync = datetime.now(timezone.utc)
-        app.next_sync = app.last_sync + timedelta(hours=4)
+        app.next_sync = app.last_sync + timedelta(hours=3)
         app.sync_now = False
         session.commit()
     except Exception as e:
