@@ -1,9 +1,9 @@
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
 from src.modules.csl.models import CSLModel, LocaleModel
-from src.utils.logger import get_logger
+import src.utils.logger as logger
 
-logger = get_logger(__name__)
+logger = logger.logger
 
 def get_csl_name(csl_id: int, session: Session) -> Optional[str]:
     """

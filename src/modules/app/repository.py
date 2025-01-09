@@ -2,10 +2,10 @@ from typing import List, Dict, Optional
 from sqlalchemy.orm import Session, joinedload
 from src.modules.app.models import AppModel, AppStatus
 from src.modules.csl.models import CSLModel
-from src.utils.logger import get_logger
+import src.utils.logger as logger
 from src.database.connection import get_db_session
 from datetime import datetime, timezone, timedelta
-logger = get_logger(__name__)
+logger = logger.logger
 
 def get_publisher_apps(publisher_id: int, session: Session) -> List[AppModel]:
     """

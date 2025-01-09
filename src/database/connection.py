@@ -6,10 +6,10 @@ from contextlib import contextmanager, AbstractContextManager
 from typing import Callable
 from tenacity import retry, stop_after_attempt, wait_exponential
 from sqlalchemy import create_engine, orm, exc
-from src.utils.logger import get_logger
+import src.utils.logger as logger
 from sqlalchemy.engine.url import URL
 
-logger = get_logger(__name__)
+logger = logger.logger
 
 class Base(DeclarativeBase):
     pass

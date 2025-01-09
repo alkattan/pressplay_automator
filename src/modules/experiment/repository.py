@@ -1,12 +1,12 @@
 from typing import List, Dict, Optional, Tuple
 from sqlalchemy.orm import Session
 from src.modules.experiment.models import ExperimentModel, ExperimentStatus, VariantModel
-from src.utils.logger import get_logger
+import src.utils.logger as logger
 from datetime import datetime, timezone
 from src.modules.csl.repository import get_csl_name, get_locale_name
 import traceback
 
-logger = get_logger(__name__)
+logger = logger.logger
 
 def update_experiment_statuses(
     session: Session, 

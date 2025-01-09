@@ -5,10 +5,9 @@ import json
 from datetime import datetime
 import requests
 import re
-import src.utils.utils as utils
-from src.utils.logger import get_logger
+import src.utils.logger as logger
 
-logger = get_logger(__name__)
+logger = logger.logger
 
 def get_target_csls(sheets, app_package):
     csls = dict()

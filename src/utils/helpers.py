@@ -10,6 +10,9 @@ from src.modules.app.models import AppModel
 from src.clients.play_console_driver import PlayConsoleDriver
 from src.modules.experiment.models import ExperimentSettingsModel
 from src.config.settings import SLACK_HOOKS
+import src.utils.logger as logger
+
+logger = logger.logger
 
 def experiment_negative_performance_kill(experiment, experiment_settings):
     """

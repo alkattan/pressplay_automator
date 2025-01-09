@@ -1,9 +1,8 @@
 from dotenv import load_dotenv
 import os
 from src.clients.play_console_driver import PlayConsoleDriver
-import src.utils.utils as utils
-from src.services.slack import send_message_to_slack_channel
-from datetime import datetime, timedelta, timezone
+import src.utils.logger as logger
+from src.services.slack import send_message_to_slack_channel 
 import argparse
 import time
 import traceback
@@ -41,7 +40,7 @@ def main(app_id: str = None, client_id: int = None, manual: bool = False):
         publishers = [p for p in publishers if p.id == client_id]
 
     for publisher in publishers:
-        utils.logger.info(f"Processing publisher {publisher.name}")
+        logger.logger.info(f"Processing publisher {publisher.name}")
         
         # Filter apps based on manual flag
         apps_to_process = []
@@ -90,8 +89,8 @@ def process_publisher(publisher):
         # Process each app
         for app in apps:
             try:
-                utils.logger_app_package = app.package_id
-                utils.logger = utils.get_logger(utils.logger_app_package)
+                logger.logger_app_package = app.package_id
+                logger.logger = logger.get_logger(logger.logger_app_package)
                 
                 # Get CSLs mapping
                 csls = get_app_csls(app)
@@ -103,9 +102,9 @@ def process_publisher(publisher):
                 update_app_sync_status(app, session)
                 
             except Exception as e:
-                utils.logger.error(str(e))
-                utils.logger.error(f"Error in processing app {app.package_id}")
-                utils.logger.error(traceback.format_exc())
+                logger.logger.error(str(e))
+                logger.logger.error(f"Error in processing app {app.package_id}")
+                logger.logger.error(traceback.format_exc())
                 continue
     finally:
         session.close()
@@ -120,8 +119,8 @@ def automate_experiments_for_app(session, app: AppModel, gpc: PlayConsoleDriver,
         gpc: Play Console driver instance
         csls: Dictionary mapping CSL IDs to locale names
     """
-    utils.logger.info("-------------------------------------")
-    utils.logger.info(f"Running experiments automation for app {app.package_id}")
+    logger.logger.info("-------------------------------------")
+    logger.logger.info(f"Running experiments automation for app {app.package_id}")
 
     # Set the app for the GPC Driver
     gpc.set_publisher_app(app.publisher, app)
@@ -129,11 +128,11 @@ def automate_experiments_for_app(session, app: AppModel, gpc: PlayConsoleDriver,
     # 1- Check if we have console access
     # response = gpc.check_url(gpc.experiments_url)
     # if response == False:
-    #     utils.logger.error(f"Cannot load the app page {app.package_id}")
+    #     logger.logger.error(f"Cannot load the app page {app.package_id}")
     #     return False
 
     # 2- Accept publishing changes
-    utils.logger.info("\n2- Accept Publishing Changes")
+    logger.logger.info("\n2- Accept Publishing Changes")
     # gpc.accept_publishing_changes()
     
     # 3- Get running experiments
@@ -152,7 +151,7 @@ def automate_experiments_for_app(session, app: AppModel, gpc: PlayConsoleDriver,
         running_experiments = gpc.get_running_experiments(csls)
 
     # 6- Create new experiments
-    utils.logger.info("\n6- Create experiments")
+    logger.logger.info("\n6- Create experiments")
     number_of_created, rest = create_experiments(
         running_experiments,
         app.experiments,
@@ -175,7 +174,7 @@ def automate_experiments_for_app(session, app: AppModel, gpc: PlayConsoleDriver,
         running_experiments = gpc.get_running_experiments(csls)
 
     # 9- Get previous experiments
-    utils.logger.info("\n8- Fetch Previous Changes")
+    logger.logger.info("\n8- Fetch Previous Changes")
     previous_experiments = gpc.get_previous_experiments(csls)
 
     # 10- Update experiment statuses in database
@@ -189,10 +188,10 @@ def automate_experiments_for_app(session, app: AppModel, gpc: PlayConsoleDriver,
     )
 
     # Log results
-    utils.logger.info(f"number_of_stopped_experiments={number_of_stopped}")
-    utils.logger.info(f"number_of_applied_experiments={number_of_applied}")
-    utils.logger.info(f"number_of_created_experiments={number_of_created}")
-    utils.logger.info(
+    logger.logger.info(f"number_of_stopped_experiments={number_of_stopped}")
+    logger.logger.info(f"number_of_applied_experiments={number_of_applied}")
+    logger.logger.info(f"number_of_created_experiments={number_of_created}")
+    logger.logger.info(
         f"Max experiments are running {len(running_experiments)} for app {app.package_id}"
     )
 
@@ -214,7 +213,7 @@ def create_experiments(
     or no more experiments to create
     """
     number_of_created = 0
-    utils.logger.info("check if we can create experiments")
+    logger.logger.info("check if we can create experiments")
 
     for t in range(40):  # Max 5 experiments at a time per csl
         created_message = ""
@@ -225,14 +224,14 @@ def create_experiments(
         print(f"variants: {variants}")
         print(f"rest: {rest}")
         if experiment is None:
-            utils.logger.info(
+            logger.logger.info(
                 f"No more experiment to run for {app_package} and possible csls running={len(running)}"
             )
             break
 
-        utils.logger.info(f"Try={t} We can run a new experiment running={len(running)}")
-        utils.logger.info("---------------------")
-        utils.logger.info(experiment)
+        logger.logger.info(f"Try={t} We can run a new experiment running={len(running)}")
+        logger.logger.info("---------------------")
+        logger.logger.info(experiment)
 
         # Create priority experiments to the limit
         for creation_try in range(3):
@@ -240,7 +239,7 @@ def create_experiments(
             
             # if experiment is created
             if created:
-                utils.logger.info(
+                logger.logger.info(
                     f'Experiment {experiment.experiment_name_auto_populated} created'
                 )
                 created_message = f""":large_blue_circle: Experiment {experiment.experiment_name_auto_populated}
@@ -260,17 +259,17 @@ Locale={experiment.locale_id}\n
                 
             # if experiment isn't created
             else:
-                utils.logger.warning(
+                logger.logger.warning(
                     f'Experiment {experiment.experiment_name_auto_populated} not created try={creation_try}'
                 )
                 try:
                     gpc.page.reload()
                     time.sleep(15)
                 except Exception as e:
-                    utils.logger.info(e)
+                    logger.logger.info(e)
                     
                 if creation_try >= 2:
-                    utils.logger.error(
+                    logger.logger.error(
                         f'Cannot create the experiment {experiment.experiment_name_auto_populated} so setting the CSL {experiment.csl_id} to error running={len(running)}'
                     )
                     if error:

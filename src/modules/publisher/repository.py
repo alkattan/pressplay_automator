@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session, joinedload
 from src.modules.publisher.models import PublisherModel, PublisherStatus
 from src.modules.app.models import AppModel
 from src.database.connection import get_db_session
-from src.utils.logger import get_logger
+import src.utils.logger as logger
 import traceback
-logger = get_logger(__name__)
+logger = logger.logger
 
 def get_publishers_with_apps(active_only: bool = True) -> List[PublisherModel]:
     """

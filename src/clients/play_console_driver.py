@@ -13,7 +13,7 @@ from src.modules.app.models import AppModel
 from src.modules.publishing_overview.repository import create_publishing_change
 from sqlalchemy.orm import Session
 # Logger
-import src.utils.utils as utils
+import src.utils.logger as logger
 import re
 from typing import List
 from src.modules.experiment.repository import get_experiment_attributes, get_experiment_variants
@@ -56,7 +56,7 @@ class PlayConsoleDriver:
         self.email = email
         self.password = password
         self.session = session
-        self.logger = utils.logger
+        self.logger = logger.logger
         self.playwright = sync_playwright().start()
         self.browser = self.start_browser()
         if not self.is_logged_in():
@@ -101,7 +101,7 @@ class PlayConsoleDriver:
         self.automated_testing = app.automated_testing
         self.automated_send_for_review = app.automated_send_for_review
         self.automated_publishing = app.automated_publishing
-        self.logger = utils.logger
+        self.logger = logger.logger
 
     @property
     def base_url(self) -> str:

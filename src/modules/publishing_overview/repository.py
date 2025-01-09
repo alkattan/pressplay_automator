@@ -1,10 +1,10 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from src.modules.publishing_overview.models import PublishingOverviewModel
-from src.utils.logger import get_logger
+import src.utils.logger as logger
 from datetime import datetime, timezone
 
-logger = get_logger(__name__)
+logger = logger.logger
 
 def get_pending_publishing_changes(session: Session, app_id: int) -> List[PublishingOverviewModel]:
     """
