@@ -473,12 +473,13 @@ class PlayConsoleDriver:
         
         self.page.goto(self.publishing_overview)
         # Changes ready to publish
-        time.sleep(2)
-        
-        # check if changes table exists
-        if (self.page.locator(
+        time.sleep(8)
+        table_exists = self.page.locator(
                 "xpath=//console-table[@debug-id='changes-table']/div/div/ess-table/ess-particle-table/div/div/div/div"
-            ).count() > 0):
+            ).count() > 0
+        self.logger.info(f"table_exists={table_exists} automated_publishing={self.automated_publishing} automated_send_for_review={self.automated_send_for_review}")
+        # check if changes table exists
+        if table_exists:
             changes_tag = self.page.locator(
                 "xpath=//console-table[@debug-id='changes-table']/div/div/ess-table/ess-particle-table/div/div/div/div"
             ).all()
@@ -516,7 +517,7 @@ class PlayConsoleDriver:
                     review = False
                     
             # if automated publishing is on
-            if self.automated_publishing == "on":
+            if self.automated_publishing:
                 self.logger.info("Automated Publishing")
                 if publish:
                     self.logger.info("Changes being sent to publish")
@@ -545,7 +546,7 @@ class PlayConsoleDriver:
                         self.logger.info("Nothing to Publish")
 
             # if automated send for review is on
-            if self.automated_send_for_review == "on":
+            if self.automated_send_for_review:
                 # Changes ready for review
                 if review:
                     self.logger.info("Changes being sent for review")
@@ -749,7 +750,7 @@ class PlayConsoleDriver:
                         # Skip headers
                         if "Experiment name" in row_text:
                             # i+=1
-                            # utils.logger.info("Skipping headers")
+                            # self.logger.info("Skipping headers")
                             continue
                         # i+=1
                     except Exception as e:
@@ -760,7 +761,7 @@ class PlayConsoleDriver:
                         continue
 
                     experiment_name = row_text.split("\n")[0]
-                    self.logger.info(row_text.split("\n"))
+                    # self.logger.info(row_text.split("\n"))
                     try:
                         start_date = datetime.strptime(
                             row_text.split("\n")[1].split(")")[-1], "%b %d, %Y"
@@ -837,7 +838,7 @@ class PlayConsoleDriver:
                             .split("Started on ")[1]
                         )
                         started_stopped = started_stopped.encode('ascii', 'ignore').decode('ascii')
-                        utils.logger.info(f"start_time={started_stopped}")
+                        self.logger.info(f"start_time={started_stopped}")
                         try:
                             start_time = datetime.strptime(
                                 started_stopped, "%b %d, %Y %I:%M %p"
