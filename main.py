@@ -40,7 +40,7 @@ def main(app_id: str = None, client_id: int = None, manual: bool = False):
         publishers = [p for p in publishers if p.id == client_id]
 
     for publisher in publishers:
-        logger.logger.info(f"Processing publisher {publisher.name}")
+        # logger.logger.info(f"Processing publisher {publisher.name}")
         
         # Filter apps based on manual flag
         apps_to_process = []
@@ -133,11 +133,11 @@ def automate_experiments_for_app(session, app: AppModel, gpc: PlayConsoleDriver,
 
     # 2- Accept publishing changes
     logger.logger.info("\n2- Accept Publishing Changes")
-    # gpc.accept_publishing_changes()
+    gpc.accept_publishing_changes()
     
     # 3- Get running experiments
     running_experiments = gpc.get_running_experiments(csls)
-    print(f"running_experiments: {running_experiments}")
+    # print(f"running_experiments: {running_experiments}")
     # 4- Process running experiments
     number_of_applied, number_of_stopped = process_running_experiments(
         running_experiments, 
