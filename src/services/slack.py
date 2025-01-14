@@ -31,6 +31,7 @@ def send_message_to_slack_channel(
     and then sends it to the Slack API using the requests library. Before sending the message, 
     it checks if the provided URL is valid (i.e., not None) and long enough.
     """
+    utils.logger.info(f"Sending message to Slack channel: {url} {text}")
     
     # Create dictionary with message data
     data = {
@@ -51,7 +52,11 @@ def send_message_to_slack_channel(
     if url is not None:
         # skip when short url
         if len(url) > 15:
-            requests.post(url, data=json.dumps(data), headers=headers)
-            utils.logger.info(f"Message sent to Slack channel: {url} {text}")
-            return True
+            try:
+                requests.post(url, data=json.dumps(data), headers=headers)
+                utils.logger.info(f"Message sent to Slack channel: {url} {text}")
+                return True
+            except Exception as e:
+                utils.logger.error(f"Error sending message to Slack channel: {e}")
+                return False
         
