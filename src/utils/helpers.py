@@ -238,10 +238,11 @@ def process_running_experiments(running : List[Dict], app : AppModel, gpc : Play
             experiment_name = running_experiment["experiment_name"]
             experiment = session.query(ExperimentModel).filter(
                 ExperimentModel.app_id == app.id,
-                ExperimentModel.experiment_name_auto_populated == experiment_name
+                ExperimentModel.google_play_experiment_id == running_experiment["experiment_id"]
             ).first()
             
             if not experiment:
+                utils.logger.info(f"Experiment {experiment_name} not found in database")
                 continue
 
             # send winning notification
@@ -398,6 +399,7 @@ def stop_losing_experiment(r, experiment, gpc, session):
         gpc (PlayConsoleDriver): Play Console driver instance
         session (Session): Database session
     """
+    utils.logger.info(f"check if we can stop experiment {experiment.experiment_name_auto_populated}")
     experiment_settings = experiment.settings
     stop_decision = False
     messages = []
@@ -430,14 +432,6 @@ def stop_losing_experiment(r, experiment, gpc, session):
                 )
                 stop_decision = True
                 
-                # Update experiment status in database
-                experiment = session.query(ExperimentModel).filter(
-                    ExperimentModel.experiment_name_auto_populated == experiment_name
-                ).first()
-                if experiment:
-                    experiment.status = ExperimentStatus.FINISHED
-                    session.commit()
-                
                 messages.append(
                     f"""\n:red_circle:  Experiment: {experiment_name} 
     Stopped due to never apply setting: 
@@ -447,7 +441,6 @@ def stop_losing_experiment(r, experiment, gpc, session):
     - min_days={experiment_settings.min_duration_days} 
     - max_days={experiment_settings.max_duration_days}"""
                 )
-            return stop_decision, messages
 
         # stop a win experiment if it is running for more than min_duration_days
         if running_for_days >= experiment_settings.min_duration_days:
@@ -525,14 +518,6 @@ def stop_losing_experiment(r, experiment, gpc, session):
                     )
                     stop_decision = True
                     
-                    # Update experiment status
-                    experiment = session.query(ExperimentModel).filter(
-                        ExperimentModel.experiment_name_auto_populated == experiment_name
-                    ).first()
-                    if experiment:
-                        experiment.status = ExperimentStatus.FINISHED
-                        session.commit()
-                    
                     messages.append(
                         f"""\n:red_circle:  Experiment: {experiment_name} 
     Stopped a Draw Experiment due to reaching min_days: 
@@ -561,14 +546,6 @@ def stop_losing_experiment(r, experiment, gpc, session):
         
         if stop_result:
             stop_decision = True
-            
-            # Update experiment status
-            experiment = session.query(ExperimentModel).filter(
-                ExperimentModel.experiment_name_auto_populated == experiment_name
-            ).first()
-            if experiment:
-                experiment.status = ExperimentStatus.FINISHED
-                session.commit()
             
             # Add appropriate message based on stop reason
             if r["status"] in ["Current listing won", "Draw"]:
@@ -602,7 +579,7 @@ Killed due to: Early kill rules
     # stop experiment if loss of stopp
     elif r["status"] == "Current listing won" or experiment.status == ExperimentStatus.STOPPING:
         utils.logger.info(
-            f"\nStop experiment {experiment_name} result={r['status']} running_for={running_for_days} days max={experiment_settings.max_duration_days}\n{r}"
+            f"\nStop experiment {experiment_name} result={r['status']} running_for={running_for_days} days max={experiment_settings.max_duration_days} status={experiment.status} \n{r}"
         )
         # stop experiment in the console
         stop_result = gpc.stop_experiment(experiment_id)
@@ -619,6 +596,15 @@ Killed due to: {r['status']}
         utils.logger.info(
             f"Experiment {experiment_name} status={r['status']} running_for={running_for_days} days"
         )
+    
+    if stop_decision:
+        # Update experiment status
+        experiment = session.query(ExperimentModel).filter(
+            ExperimentModel.google_play_experiment_id == experiment_id
+        ).first()
+        if experiment:
+            experiment.status = ExperimentStatus.FINISHED
+            session.commit()
 
     return stop_decision, messages
 
