@@ -44,7 +44,7 @@ def get_app_csls(app: AppModel) -> Dict[str, List[str]]:
     """
     try:
         return {
-            csl.id: [locale.name for locale in csl.locales] 
+            csl.name: [locale.name.split(" \u2013 ")[1] for locale in csl.locales] 
             for csl in app.csls
         }
     except Exception as e:
