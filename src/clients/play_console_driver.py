@@ -775,6 +775,7 @@ class PlayConsoleDriver:
                         except Exception as e:
                             self.logger.info(f"No start date found {str(e)} {row_text}")
                             start_date = None
+                    # try translated other wise Default graphics experiment
                     try:
                         store_listing = (
                             row_text.split("\n")[1]
@@ -819,7 +820,6 @@ class PlayConsoleDriver:
                     if start_date is None:
                         result = None
                         start_time = None
-                        need_to_kill = False
                     # experiment is not a draft
                     else:
                         try:
@@ -895,7 +895,6 @@ class PlayConsoleDriver:
                         }
                     running_experiments.append(exp)
                     new_page.close()
-                    # self.logger.info(exp)
             except Exception as s:
                 self.logger.error(f"Something went wrong {str(s)}")
                 self.logger.error(traceback.format_exc())
@@ -938,13 +937,6 @@ class PlayConsoleDriver:
                 for i, row in enumerate(previous_experiments_with_headers):
                     # go to page
                     self.logger.info(f"Processing previous Experiment number={i}")
-                    # self.page.goto(self.experiments_url)
-                    # time.sleep(4)
-                    # # Get running experiments
-                    # previous_experiments_with_headers = self.page.locator(
-                    #     "xpath=//terminated-experiments-table/console-table/div/div/ess-table/ess-particle-table/div/div/div/div"
-                    # ).all()
-                    # assign the row again
                     try:
                         row = previous_experiments_with_headers[i]
                         row_text = row.text_content()

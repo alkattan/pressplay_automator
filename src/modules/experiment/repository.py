@@ -162,28 +162,21 @@ def get_next_experiment_and_variants(
             return None, None, None
 
         # Process running experiments
-        running_locals_listings = set()
+        running_listings_locales = set()
         for r in running:
             if "experiment_type" in r and r["experiment_type"] == "Default graphics":
                 continue
-            running_locals_listings.add(f'{r["store_listing"]}--{r["experiment_type"]}')
+            running_listings_locales.add(f'{r["store_listing"]}--{r["locale"]}')
 
         experiments = []
         non_ready_experiments = []
 
         for experiment in ready_experiments:
             try:
-                # if experiment.csl_id not in csls:
-                #     mark_experiment_as_error(
-                #         session,
-                #         experiment,
-                #         f'error: {experiment.csl_id} store listing not found in CSLs'
-                #     )
-                #     continue
-
+                csl_name = get_csl_name(experiment.csl_id, session)
                 number_per_store_listing = _count_experiments_per_store_listing(
-                    experiment.csl_id,
-                    running_locals_listings
+                    csl_name,
+                    running_listings_locales
                 )
                 number_of_default_graphics_experiments = len([
                     r for r in running 
@@ -192,16 +185,16 @@ def get_next_experiment_and_variants(
                 ])
                 # get experiment csl name
                 logger.info(f"experiment.csl_id: {experiment.csl_id}, experiment.locale_id: {experiment.locale_id}")
-                csl_name = get_csl_name(experiment.csl_id, session)
-                locale_name = get_locale_name(experiment.locale_id, session)
+                locale_name = get_locale_name(experiment.locale_id, session).split(" – ")[1]
+                
                 csl_locale = f'{csl_name}--{locale_name}'
                 logger.info(f"csl_locale: {csl_locale}")
-                logger.info(f"running_locals_listings: {running_locals_listings}")
+                logger.info(f"running_locals_listings: {running_listings_locales}")
                 logger.info(f"number_per_store_listing: {number_per_store_listing}")
                 logger.info(f"number_of_default_graphics_experiments: {number_of_default_graphics_experiments}")
 
-                if (csl_locale not in running_locals_listings
-                    and number_per_store_listing < len(csls[int(experiment.csl_id)])
+                if (csl_locale not in running_listings_locales
+                    and number_per_store_listing < len(csls[csl_name])
                     and number_per_store_listing < 5
                     and number_of_default_graphics_experiments == 0):
                     experiments.append(experiment)
@@ -230,7 +223,7 @@ def get_next_experiment_and_variants(
         logger.error(traceback.format_exc())
         return None, None, None
 
-def _count_experiments_per_store_listing(csl_id: str, running_locals_listings: set) -> int:
+def _count_experiments_per_store_listing(csl_name: str, running_csl_locales: set) -> int:
     """
     Count number of experiments for a store listing
     
@@ -242,8 +235,8 @@ def _count_experiments_per_store_listing(csl_id: str, running_locals_listings: s
         Number of experiments for the store listing
     """
     return len([
-        r for r in running_locals_listings 
-        if r.startswith(f'{csl_id}--')
+        r for r in running_csl_locales 
+        if r.startswith(f'{csl_name}--')
     ]) 
 
 def get_experiment_attributes(session: Session, experiment: ExperimentModel) -> Dict:
