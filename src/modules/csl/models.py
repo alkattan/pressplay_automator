@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, ForeignKey, Enum
 from src.database.connection import Base
@@ -32,4 +32,9 @@ class LocaleModel(Base):
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
-    csls = relationship("CSLModel", secondary=csl_locale, back_populates="locales") 
+    csls = relationship("CSLModel", secondary=csl_locale, back_populates="locales")
+    previous_experiments: Mapped[List["PreviousExperimentModel"]] = relationship(
+        "PreviousExperimentModel",
+        back_populates="locale",
+        cascade="all, delete-orphan"
+    ) 

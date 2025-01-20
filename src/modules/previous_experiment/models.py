@@ -32,8 +32,7 @@ class PreviousExperimentModel(Base):
     app = relationship("AppModel", back_populates="previous_experiments")
     locale = relationship("LocaleModel", back_populates="previous_experiments")
     previous_variants: Mapped[List["PreviousVariantModel"]] = relationship(
-        "PreviousVariantModel", 
-        back_populates="previous_experiment", 
+        back_populates="previous_experiment",
         cascade="all, delete-orphan"
     )
 
