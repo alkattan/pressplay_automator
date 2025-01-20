@@ -34,3 +34,4 @@ class AppModel(Base):
     csls: Mapped[List["CSLModel"]] = relationship(back_populates="app", cascade="all, delete-orphan")
     experiments: Mapped[List["ExperimentModel"]] = relationship(back_populates="app", cascade="all, delete-orphan")
     publishing_overviews: Mapped[List["PublishingOverviewModel"]] = relationship(back_populates="app", cascade="all, delete-orphan")
+    previous_experiments = relationship("PreviousExperimentModel", back_populates="app")
