@@ -1,8 +1,5 @@
 from PIL import Image
 from src.clients.drive import download_image_from_drive_api
-import logging
-import json
-from datetime import datetime
 import requests
 import re
 import src.utils.logger as logger
@@ -40,7 +37,7 @@ def update_image_url(image_url):
 
 def download_image_from_url(image_url, image_name):
     image_url = update_image_url(image_url)
-    utils.logger.info(f"Updated image url {image_url}")
+    logger.info(f"Updated image url {image_url}")
     # Send a GET request to the image URL
     response = requests.get(image_url)
 
@@ -51,7 +48,7 @@ def download_image_from_url(image_url, image_name):
             # Write the contents of the response to the file
             file.write(response.content)
     else:
-        utils.logger.error(
+        logger.logger.error(
             f"Failed to download image. Status code: {response.status_code}"
         )
 
@@ -69,7 +66,7 @@ def resize_image(image_path, size=(512, 512)):
 
 
 def is_16_9_or_9_16(width, height):
-    utils.logger.info(f"Checking aspect ratio for {width}x{height}")
+    logger.logger.info(f"Checking aspect ratio for {width}x{height}")
     # Calculate the aspect ratio
     aspect_ratio = width / height
 
